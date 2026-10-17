@@ -26,35 +26,37 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
       - name: Extract Android project
         run: |
           set -e
           mkdir project
           if [ -f WPAudio.zip ]; then
             unzip -o WPAudio.zip -d project
-          elif [ -f WPAudio_project_siap_build.zip ]; then
-            unzip -o WPAudio_project_siap_build.zip -d project
           else
-            echo "File ZIP proyek tidak ditemukan"
-            exit 1
+            unzip -o WPAudio_project_siap_build.zip -d project
           fi
-          find project -name gradlew -type f
+          find project -name settings.gradle -o -name settings.gradle.kts
 
       - name: Build debug APK
         run: |
           set -e
-          GRADLEW=$(find project -name gradlew -type f | head -n 1)
-          if [ -z "$GRADLEW" ]; then
-            echo "gradlew tidak ditemukan dalam ZIP"
+          SETTINGS=$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle tidak ditemukan"
             exit 1
           fi
-          cd "$(dirname "$GRADLEW")"
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          ROOT=$(dirname "$SETTINGS")
+          cd "$ROOT"
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: WPAudio-debug-APK
-          path: project/**/build/outputs/apk/debug/*.apk
+          path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
