@@ -1,0 +1,60 @@
+
+name: Build WPAudio APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'WPAudio.zip'
+      - 'WPAudio_project_siap_build.zip'
+      - '.github/workflows/main.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract Android project
+        run: |
+          set -e
+          mkdir project
+          if [ -f WPAudio.zip ]; then
+            unzip -o WPAudio.zip -d project
+          elif [ -f WPAudio_project_siap_build.zip ]; then
+            unzip -o WPAudio_project_siap_build.zip -d project
+          else
+            echo "File ZIP proyek tidak ditemukan"
+            exit 1
+          fi
+          find project -name gradlew -type f
+
+      - name: Build debug APK
+        run: |
+          set -e
+          GRADLEW=$(find project -name gradlew -type f | head -n 1)
+          if [ -z "$GRADLEW" ]; then
+            echo "gradlew tidak ditemukan dalam ZIP"
+            exit 1
+          fi
+          cd "$(dirname "$GRADLEW")"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WPAudio-debug-APK
+          path: project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
